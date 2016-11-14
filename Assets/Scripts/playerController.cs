@@ -1,23 +1,30 @@
 ﻿using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class playerController : MonoBehaviour {
 
+    public Text txtSit;
+    public GameObject txtHolder;
     private Animator anim;
-    private bool sitting = false;
+    private bool sitting = false, inSit1 = false, inSit2 = false, isAniming = false;
 
 	void Start () {
 		anim = this.transform.GetChild(0).GetComponent<Animator> ();
 	}
 
-	void Update () {
-		bool walking = !sitting && (Input.GetKey (KeyCode.W) || Input.GetKey (KeyCode.S));
-		bool rotating = !sitting && (Input.GetKey (KeyCode.A) || Input.GetKey (KeyCode.D));
+    void Update() {
+        bool walking = !sitting && (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.S));
+        bool rotating = !sitting && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D));
 
-        handleMovementAnim(walking, rotating);
-        
-		doWalking (walking);
-		doRotation (rotating);
+        txtHolder.SetActive(inSit1 || inSit2);
+
+        if (!isAniming) { 
+            handleMovementAnim(walking, rotating);
+
+            doWalking(walking);
+            doRotation(rotating);
+        }
 
 		if (!walking && !rotating) {
             handleJump();
@@ -75,30 +82,31 @@ public class playerController : MonoBehaviour {
     }
 
     private void handleSit() {
-        if (Input.GetKeyDown(KeyCode.E)) {
+        if (Input.GetKeyDown(KeyCode.E) && !isAniming) {
             if (sitting) {
+                isAniming = true;
                 sitting = false;
+                txtSit.text = "Sit";
                 anim.SetTrigger("sit_to_stand");
                 StartCoroutine(MoveOverSeconds(this.gameObject, new Vector3(-0.02f, 0, 0.36f), 1f, false));
+                StartCoroutine(finishAniming());
                 return;
             }
-
-            bool inPosition1 = transform.position.x >= -5.15f && transform.position.x <= -4.85f
-                       && transform.position.z <= -3.95f && transform.position.z >= -4.1f;
-
-            bool inPosition2 = transform.position.x >= 4.1f && transform.position.x <= 4.85f
-                       && transform.position.z <= -4f && transform.position.z >= -4.8f;
-            if (inPosition1 || inPosition2) {
+            
+            if (inSit1 || inSit2) {
+                isAniming = true;
                 sitting = true;
+                txtSit.text = "Stand";
+                anim.SetTrigger("stand_to_sit");
                 this.GetComponent<Rigidbody>().isKinematic = true;
-                if (inPosition1) {
+                if (inSit1) {
                     transform.rotation = Quaternion.AngleAxis(160, Vector3.up);
                     StartCoroutine(MoveOverSeconds(this.gameObject, new Vector3(0.02f, 0, -0.36f), 1f, true));
-                } else if(inPosition2) {
+                } else if(inSit2) {
                     transform.rotation = Quaternion.AngleAxis(-45, Vector3.up);
                     StartCoroutine(MoveOverSeconds(this.gameObject, new Vector3(0.03f, 0, -0.6f), 1f, true));
                 }
-                anim.SetTrigger("stand_to_sit");
+                StartCoroutine(finishAniming());
             }
         }
     }
@@ -113,5 +121,31 @@ public class playerController : MonoBehaviour {
             yield return new WaitForEndOfFrame();
         }
         this.GetComponent<Rigidbody>().isKinematic = kinematic;
+    }
+
+    public IEnumerator finishAniming() {
+        yield return new WaitForSeconds(2.5f);
+        isAniming = false;
+    }
+
+
+    void OnTriggerEnter(Collider other) {
+        if (other.gameObject.CompareTag("sit1")) {
+            inSit1 = true;
+        }
+
+        if (other.gameObject.CompareTag("sit2")) {
+            inSit2 = true;
+        }
+    }
+
+    void OnTriggerExit(Collider other) {
+        if (other.gameObject.CompareTag("sit1")) {
+            inSit1 = false;
+        }
+
+        if (other.gameObject.CompareTag("sit2")) {
+            inSit2 = false;
+        }
     }
 }
